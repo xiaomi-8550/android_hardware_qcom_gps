@@ -30,7 +30,6 @@ cc_library_shared {
         "libloc_core_headers",
         "libloc_pla_headers",
         "liblocation_api_headers",
-        "libloc_base_util_headers",
     ],
 
 }
