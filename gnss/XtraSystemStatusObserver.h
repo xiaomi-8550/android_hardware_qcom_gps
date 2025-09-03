@@ -136,6 +136,7 @@ public :
     bool getXtraStatus(uint32_t sessionId);
     bool registerXtraStatusUpdate(uint32_t sessionId, bool registerUpdate);
     bool updateXtraDataDeletion();
+    bool updateXtraUserConsent(bool userConsent);
 
 private:
     GnssAdapter*   mAdapter;

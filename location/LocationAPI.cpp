@@ -28,7 +28,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022, 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022, 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -234,8 +234,8 @@ void LocationAPI::onRemoveClientCompleteCb (LocationAdapterTypeMask adapterType)
 
     if (invokeCallback) {
         LOC_LOGd("invoke client destroy cb");
-        if (!destroyCompleteCb) {
-            (destroyCompleteCb) ();
+        if (destroyCompleteCb) {
+            destroyCompleteCb();
         }
 
         delete this;
@@ -336,6 +336,38 @@ LocationAPI::createInstance (LocationCallbacks& locationCallbacks)
     pthread_mutex_unlock(&gDataMutex);
 
     return locationApiObj;
+}
+
+uint32_t
+LocationControlAPI::gnssInjectMmfData(const GnssMapMatchedData& data)
+{
+    uint32_t id = 0;
+    pthread_mutex_lock(&gDataMutex);
+
+    if (gData.gnssInterface != NULL) {
+        id = gData.gnssInterface->gnssInjectMmfData(data);
+    } else {
+        LOC_LOGe(" No gnss interface available for Location Control API client %p ", this);
+    }
+
+    pthread_mutex_unlock(&gDataMutex);
+    return id;
+}
+
+uint32_t
+LocationControlAPI::configureUserConsentForXtra(const bool userConsent)
+{
+    uint32_t id = 0;
+    pthread_mutex_lock(&gDataMutex);
+
+    if (gData.gnssInterface != NULL) {
+        id = gData.gnssInterface->configureUserConsentForXtra(userConsent);
+    } else {
+        LOC_LOGe(" No gnss interface available for Location Control API client %p ", this);
+    }
+
+    pthread_mutex_unlock(&gDataMutex);
+    return id;
 }
 
 void

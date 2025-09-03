@@ -30,7 +30,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -77,6 +77,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define BDS_SV_ID_OFFSET     (200)
 #define GALILEO_SV_ID_OFFSET (300)
 #define NAVIC_SV_ID_OFFSET   (400)
+#define GPS_SBAS_PRN_MAX     (158)
 #define MAX_SV_COUNT_SUPPORTED_IN_ONE_CONSTELLATION  64
 #define MAX_SATELLITES_IN_USE 12
 #define MSEC_IN_ONE_WEEK      604800000ULL
@@ -695,14 +696,16 @@ static uint32_t loc_nmea_generate_GSA(const UlpLocation &location,
     uint32_t svIdOffset = sv_meta_p->svIdOffset;
     uint64_t mask = sv_meta_p->mask;
 
+    // for non-glo, sv id need to start at 0 in GSA sentence
     if (!(sv_meta_p->svTypeMask & (1 << GNSS_SV_TYPE_GLONASS))) {
         svIdOffset = 0;
     }
 
     for (uint8_t i = 1; mask > 0 && svUsedCount < 64; i++)
     {
-        if (mask & 1)
+        if (mask & 1) {
             svUsedList[svUsedCount++] = i + svIdOffset;
+        }
         mask = mask >> 1;
     }
 
@@ -852,9 +855,6 @@ static void loc_nmea_generate_GSV(const GnssSvNotification &svNotify,
         return;
     }
 
-    if ((1 << GNSS_SV_TYPE_GLONASS) & sv_meta_p->svTypeMask) {
-        svIdOffset = 0;
-    }
     svNumber = 1;
     sentenceNumber = 1;
     sentenceCount = svCount / 4 + (svCount % 4 != 0);
@@ -877,10 +877,13 @@ static void loc_nmea_generate_GSV(const GnssSvNotification &svNotify,
 
         for (int i=0; (svNumber <= svNotify.count) && (i < 4);  svNumber++)
         {
+            GnssSvType svType = svNotify.gnssSvs[svNumber - 1].type;
+            uint16_t   svId   = svNotify.gnssSvs[svNumber - 1].svId;
             GnssSignalTypeMask signalType = svNotify.gnssSvs[svNumber-1].gnssSignalTypeMask;
+
             if (0 == signalType) {
                 // If no signal type in report, it means default L1,G1,E1,B1I
-                switch (svNotify.gnssSvs[svNumber - 1].type)
+                switch (svType)
                 {
                     case GNSS_SV_TYPE_GPS:
                         signalType = GNSS_SIGNAL_GPS_L1CA;
@@ -910,21 +913,30 @@ static void loc_nmea_generate_GSV(const GnssSvNotification &svNotify,
                 }
             }
 
-            if ((sv_meta_p->svTypeMask & (1 << svNotify.gnssSvs[svNumber - 1].type)) &&
+            if ((sv_meta_p->svTypeMask & (1 << svType)) &&
                     sv_meta_p->signalId == convert_signalType_to_signalId(signalType))
             {
                 svIdOffset = sv_meta_p->svIdOffset;
-                if (GNSS_SV_TYPE_SBAS == svNotify.gnssSvs[svNumber - 1].type) {
-                    svIdOffset = SBAS_SV_ID_OFFSET;
+
+                if (GNSS_SV_TYPE_GLONASS == svType) {
+                    // For GLO, sv id is of PRN in range of [65, 96]
+                    svIdOffset = 0;
+                } else if (GNSS_SV_TYPE_SBAS == svType) {
+                    // only process GPS SBAS
+                    if (svId >= SBAS_SV_PRN_MIN && svId <= GPS_SBAS_PRN_MAX) {
+                        svIdOffset = SBAS_SV_ID_OFFSET;
+                    } else {
+                        continue;
+                    }
                 }
-                if (GNSS_SV_TYPE_GLONASS == svNotify.gnssSvs[svNumber - 1].type &&
-                    GLO_SV_PRN_SLOT_UNKNOWN == svNotify.gnssSvs[svNumber - 1].svId) {
+
+                if ((GNSS_SV_TYPE_GLONASS == svType) && (GLO_SV_PRN_SLOT_UNKNOWN == svId)) {
                     length = snprintf(pMarker, lengthRemaining, ",,%02d,%03d,",
                         (int)(0.5 + svNotify.gnssSvs[svNumber - 1].elevation), //float to int
                         (int)(0.5 + svNotify.gnssSvs[svNumber - 1].azimuth)); //float to int
                 } else {
                     length = snprintf(pMarker, lengthRemaining, ",%02d,%02d,%03d,",
-                        svNotify.gnssSvs[svNumber - 1].svId - svIdOffset,
+                                      svId - svIdOffset,
                         (int)(0.5 + svNotify.gnssSvs[svNumber - 1].elevation), //float to int
                         (int)(0.5 + svNotify.gnssSvs[svNumber - 1].azimuth)); //float to int
                 }
@@ -2258,7 +2270,9 @@ void loc_nmea_generate_sv(const GnssSvNotification &svNotify,
             } else {
                 // GNSS_SIGNAL_GPS_L1CA, GNSS_SIGNAL_SBAS_L1 or default
                 // If no signal type in report, it means default L1
-                sv_cache_info.gps_l1_count++;
+                if (svNotify.gnssSvs[svOffset].svId <= GPS_SBAS_PRN_MAX) {
+                    sv_cache_info.gps_l1_count++;
+                }
             }
         }
         else if (GNSS_SV_TYPE_GLONASS == svNotify.gnssSvs[svOffset].type)

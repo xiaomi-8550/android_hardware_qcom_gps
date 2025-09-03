@@ -29,7 +29,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022, 2024 Qualcomm Innovation Center, Inc. All rights reserved.
 SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
@@ -143,8 +143,11 @@ public:
                              unordered_set<KEY>* goneKeys, unordered_set<VAL>* goneVals) {
         for (auto key : keys) {
             auto iter = mMap.find(key);
-            if (iter != mMap.end() && trimOrRemove(iter, rVals, goneVals) && nullptr != goneKeys) {
-                goneKeys->insert(iter->first);
+            if (iter != mMap.end()) {
+                KEY goneKey = iter->first;
+                if (trimOrRemove(iter, rVals, goneVals) && nullptr != goneKeys) {
+                    goneKeys->insert(goneKey);
+                }
             }
         }
     }

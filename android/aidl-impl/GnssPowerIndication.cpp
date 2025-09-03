@@ -20,7 +20,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -60,6 +60,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <log_util.h>
 #include <inttypes.h>
 #include "loc_misc_utils.h"
+#include <LocContext.h>
 
 typedef const GnssInterface* (getLocationInterface)();
 
@@ -113,7 +114,12 @@ ScopedAStatus GnssPowerIndication::setCallback(
         return ScopedAStatus::fromExceptionCode(STATUS_INVALID_OPERATION);
     }
     if (callback != nullptr) {
-        callback->setCapabilitiesCb(IGnssPowerIndicationCallback::CAPABILITY_TOTAL);
+        if (loc_core::ContextBase::isFeatureSupported(
+                LOC_SUPPORTED_FEATURE_DYNAMIC_FEATURE_STATUS)) {
+            callback->setCapabilitiesCb(IGnssPowerIndicationCallback::CAPABILITY_TOTAL);
+        } else {
+            callback->setCapabilitiesCb(0);
+        }
     }
     return ScopedAStatus::ok();
 }

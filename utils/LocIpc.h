@@ -30,7 +30,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -117,7 +117,7 @@ public:
         mClientsToWatch.emplace(nodeId);
     }
     virtual void onServiceStatusChange(int sericeId, int instanceId, ServiceStatus status,
-                                       const LocIpcSender& sender) = 0;
+                                       uint32_t nodeId, uint32_t port) = 0;
     inline virtual void onClientGone(int nodeId, int portId) {}
     inline const unordered_set<int>& getServicesToWatch() { return mServicesToWatch; }
 };
@@ -208,7 +208,8 @@ public:
     virtual unique_ptr<LocIpcRecver> getRecver(const shared_ptr<ILocIpcListener>& listener) {
         return nullptr;
     }
-    inline virtual bool copyDestAddrFrom(const LocIpcSender& otherSender) { return true; }
+    // Function used to update dest node id and port id for QRTR sender socket
+    inline virtual bool updateDestAddr(uint32_t nodeId, uint32_t portId) { return true; }
 };
 
 class LocIpcRecver {
