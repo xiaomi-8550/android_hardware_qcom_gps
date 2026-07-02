@@ -60,6 +60,7 @@ cc_library_shared {
 cc_library_shared {
     name: "android.hardware.gnss-aidl-impl-qti_wearable",
     stem: "android.hardware.gnss-aidl-impl-qti",
+    enabled: false,
     vintf_fragments: ["android.hardware.gnss-aidl-service-qti.xml"],
     vendor: true,
     relative_install_path: "hw",
@@ -155,6 +156,7 @@ cc_binary {
 cc_binary {
     name: "android.hardware.gnss-aidl-service-qti_wearable",
     stem: "android.hardware.gnss-aidl-service-qti",
+    enabled: false,
     vintf_fragments: ["android.hardware.gnss-aidl-service-qti.xml"],
     vendor: true,
     relative_install_path: "hw",
