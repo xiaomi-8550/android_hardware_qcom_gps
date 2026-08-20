@@ -29,7 +29,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -61,6 +61,12 @@ IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+
+/*
+ * Changes from Qualcomm Technologies, Inc. are provided under the following license:
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
 
 #ifndef LOCATIONDATATYPES_H
 #define LOCATIONDATATYPES_H
@@ -2331,6 +2337,7 @@ struct GnssDcReportInfo {
 // Specify the set of terrestrial technologies
 enum TerrestrialTechMask {
     TERRESTRIAL_TECH_GTP_WWAN = 1 << 0,
+    TERRESTRIAL_TECH_GTP_WIFI = 1 << 1,
 };
 
 // Specify parameters related to lever arm
@@ -3968,6 +3975,35 @@ struct GnssMapMatchedData {
      *  Value: True or False */
     bool isTunnel;
 
+};
+
+enum NetworkConnectionStatus {
+    NET_CONNECTION_UNKNOWN = 0,
+    NET_CONNECTED,
+    NET_DISCONNECTED,
+};
+
+enum NetworkTypeInfo {
+    TYPE_UNKNOWN_NETWORK = 0,
+    TYPE_WWAN,
+    TYPE_WLAN,
+};
+
+/** @brief
+    Always set a 2-byte country string, such as "cn","us","in"<br>
+
+    When networkType is TYPE_WWAN,
+    set Mobile Country Code and the Mobile Network Code to the networkInfo,
+    The MCC is a three-digit code representing the country,
+    while the MNC is a two or three-digit code representing
+    the specific mobile network within that country.
+    For example "405|854", for Indian mobile operator Andhra Pradesh <br/>
+*/
+struct NetworkInfo {
+    NetworkConnectionStatus connection;
+    NetworkTypeInfo networkType;
+    std::string country;
+    std::string mccmnc;
 };
 
 #endif /* LOCATIONDATATYPES_H */

@@ -1,7 +1,11 @@
 /*
-Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
-SPDX-License-Identifier: BSD-3-Clause-Clear
-*/
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ *
+ * Changes from Qualcomm Technologies, Inc. are provided under the following license:
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
 
 #define LOG_NDEBUG 0
 #define LOG_TAG "LocSvc_XmlParser"
@@ -276,14 +280,14 @@ void parse_public_key_elements(xmlNode *a_node, mgpOsnmaPublicKeyT& publicKey,
                 continue;
             } else if (xmlParser.xmlStrncmpFunc(cur_node->name, XML_NODE_PKID,
                     xmlParser.xmlStrlenFunc(XML_NODE_PKID)) == 0) {
-                int pkID;
+                int pkID = 0;
                 int status = parse_int_element(cur_node, pkID, XML_NODE_PKID, xmlParser);
                 if (status == 0) {
                     publicKey.uNpkId = pkID;
                 }
             } else if (xmlParser.xmlStrncmpFunc(cur_node->name, XML_NODE_LENGTH_IN_BITS,
                     xmlParser.xmlStrlenFunc(XML_NODE_LENGTH_IN_BITS)) == 0) {
-                int lenInBits;
+                int lenInBits = 0;
                 int status = parse_int_element(cur_node, lenInBits, XML_NODE_LENGTH_IN_BITS,
                         xmlParser);
                 if (status == 0) {
@@ -345,21 +349,21 @@ void parse_tree_node_elements(xmlNode *a_node, mgpOsnmaTreeNodeT& treeNode,
         if (cur_node != nullptr && cur_node->type == XML_ELEMENT_NODE) {
             if (xmlParser.xmlStrncmpFunc(cur_node->name, XML_NODE_I,
                     xmlParser.xmlStrlenFunc(XML_NODE_I)) == 0) {
-                int iVal;
+                int iVal = 0;
                 int status = parse_int_element(cur_node, iVal, XML_NODE_I, xmlParser);
                 if (status == 0) {
                     treeNode.ui = iVal;
                 }
             } else if (xmlParser.xmlStrncmpFunc(cur_node->name, XML_NODE_J,
                     xmlParser.xmlStrlenFunc(XML_NODE_J)) == 0) {
-                int jVal;
+                int jVal = 0;
                 int status = parse_int_element(cur_node, jVal, XML_NODE_J, xmlParser);
                 if (status == 0) {
                     treeNode.uj = jVal;
                 }
             } else if (xmlParser.xmlStrncmpFunc(cur_node->name, XML_NODE_LENGTH_IN_BITS,
                         xmlParser.xmlStrlenFunc(XML_NODE_LENGTH_IN_BITS)) == 0) {
-                int lenInBits;
+                int lenInBits = 0;
                 int status = parse_int_element(cur_node, lenInBits, XML_NODE_LENGTH_IN_BITS,
                         xmlParser);
                 if (status == 0) {

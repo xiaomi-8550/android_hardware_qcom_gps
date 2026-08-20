@@ -29,7 +29,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022 - 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022 - 2025 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -61,6 +61,13 @@ IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+
+/*
+ * Changes from Qualcomm Technologies, Inc. are provided under the following license:
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
+
 #ifndef LOCATION_INTERFACE_H
 #define LOCATION_INTERFACE_H
 
@@ -165,6 +172,7 @@ struct GnssInterface {
     uint32_t (*configOsnmaEnablement) (bool enable);
     uint32_t (*gnssInjectMmfData) (const GnssMapMatchedData& data);
     uint32_t (*configureUserConsentForXtra) (const bool xtraUserConsent);
+    void (*updateMccMnc)(std::string& mccmncCountry);
 };
 
 struct BatchingInterface {

@@ -27,41 +27,9 @@
  *
  */
 
-/*
-Changes from Qualcomm Innovation Center are provided under the following license:
-
-Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted (subject to the limitations in the
-disclaimer below) provided that the following conditions are met:
-
-    * Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
-
-    * Redistributions in binary form must reproduce the above
-      copyright notice, this list of conditions and the following
-      disclaimer in the documentation and/or other materials provided
-      with the distribution.
-
-    * Neither the name of Qualcomm Innovation Center, Inc. nor the names of its
-      contributors may be used to endorse or promote products derived
-      from this software without specific prior written permission.
-
-NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
-WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
-ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
-GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
-IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+/** Changes from Qualcomm Technologies, Inc. are provided under the following license:
+ *  Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ *  SPDX-License-Identifier: BSD-3-Clause-Clear */
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -155,19 +123,27 @@ ssize_t Sock::sendto(const void *buf, size_t len, int flags, const struct sockad
 }
 ssize_t Sock::recvfrom(const LocIpcRecver& recver, const shared_ptr<ILocIpcListener>& dataCb,
                        int sid, int flags, struct sockaddr *srcAddr, socklen_t *addrlen) const  {
+    constexpr int MAX_RECV_RETRIES = 5;
+    ssize_t nBytes = 0;
     std::string msg(mMaxTxSize + sizeof(LOC_IPC_HEAD), 0);
-    ssize_t nBytes = ::recvfrom(sid, (void*)msg.data(), msg.size(), flags, srcAddr, addrlen);
+
+    for (int retry = 0; retry < MAX_RECV_RETRIES; ++retry) {
+        nBytes = ::recvfrom(sid, (void*)msg.data(), msg.size(), flags, srcAddr, addrlen);
+        if (nBytes == -1 && errno == EINTR) {
+            continue; // Retry on EINTR
+        }
+        break; // Exit loop on success or other error
+    }
+
     if (nBytes > 0) {
         if (strncmp(msg.data(), MSG_ABORT, sizeof(MSG_ABORT)) == 0) {
             LOC_LOGi("recvd abort msg.data %s", msg.data());
             nBytes = -100;
         } else if (nBytes <= sizeof(LOC_IPC_HEAD) || strncmp(msg.data(), LOC_IPC_HEAD, 16) ||
-            msg.data()[32] != '$' || msg.data()[41] != '$') {
-            // short message
+                   msg.data()[32] != '$' || msg.data()[41] != '$') {
             msg.resize(nBytes);
             dataCb->onReceive(msg.data(), nBytes, &recver);
         } else {
-            // long message
             std::string key(msg.data(), sizeof(LOC_IPC_HEAD));
             auto iter = sSockToPayloadMap.find(key);
             size_t payLoadSize = nBytes - sizeof(LOC_IPC_HEAD);
@@ -176,22 +152,26 @@ ssize_t Sock::recvfrom(const LocIpcRecver& recver, const shared_ptr<ILocIpcListe
                 sscanf(msg.data() + sizeof(LOC_IPC_HEAD) - 9, "%zx", &totalSize);
                 sSockToPayloadMap[key] = std::make_pair(totalSize - payLoadSize,
                                                         string(totalSize, 0));
-                memcpy((char*) sSockToPayloadMap[key].second.data(), (char *)msg.data()+
-                        sizeof(LOC_IPC_HEAD), payLoadSize);
+                memcpy((char*)sSockToPayloadMap[key].second.data(),
+                       msg.data() + sizeof(LOC_IPC_HEAD), payLoadSize);
             } else {
-                memcpy((char*) iter->second.second.data() +
-                        (iter->second.second.size() - iter->second.first),
-                        msg.data()+sizeof(LOC_IPC_HEAD), payLoadSize);
+                memcpy((char*)iter->second.second.data() +
+                       (iter->second.second.size() - iter->second.first),
+                       msg.data() + sizeof(LOC_IPC_HEAD), payLoadSize);
                 iter->second.first -= payLoadSize;
 
-                if (0 == iter->second.first) {
+                if (iter->second.first == 0) {
                     dataCb->onReceive(iter->second.second.data(),
-                            iter->second.second.size(), &recver);
+                                      iter->second.second.size(), &recver);
                     sSockToPayloadMap.erase(iter);
                 }
             }
         }
+    } else if (nBytes == -1) {
+        LOC_LOGe("recvfrom failed after retries, errno %d - %s", errno, strerror(errno));
+        sSockToPayloadMap.clear();
     }
+
     return nBytes;
 }
 ssize_t Sock::sendAbort(int flags, const struct sockaddr *destAddr, socklen_t addrlen) {
@@ -459,7 +439,8 @@ std::string LocIpc::generateThreadName(const std::string& recverName) {
 }
 
 shared_ptr<LocIpcSender> LocIpc::getLocIpcLocalSender(const char* localSockName) {
-    return make_shared<LocIpcLocalSender>(localSockName);
+    auto sender = make_shared<LocIpcLocalSender>(localSockName);
+    return sender;
 }
 unique_ptr<LocIpcRecver> LocIpc::getLocIpcLocalRecver(const shared_ptr<ILocIpcListener>& listener,
                                                       const char* localSockName) {

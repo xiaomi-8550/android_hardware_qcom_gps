@@ -29,7 +29,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022, 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -62,6 +62,7 @@ OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+
 #define LOG_NDEBUG 0
 #define LOG_TAG "LocSvc_CtxBase"
 
@@ -80,6 +81,8 @@ namespace loc_core {
 
 loc_gps_cfg_s_type ContextBase::mGps_conf {};
 loc_sap_cfg_s_type ContextBase::mSap_conf {};
+izat_process_info ContextBase:: mIzat_process_conf {};
+
 bool ContextBase::sIsEngineCapabilitiesKnown = false;
 uint64_t ContextBase::sSupportedMsgMask = 0;
 bool ContextBase::sGnssMeasurementSupported = false;
@@ -269,7 +272,86 @@ void ContextBase::readConfig()
           default:
              break;
         }
+
+        readIZatConfForValueAddedProcess();
     }
+}
+
+void ContextBase::readIZatConfForValueAddedProcess() {
+    unsigned int processListLength = 0;
+    loc_process_info_s_type* processInfoList = nullptr;
+
+    int rc = loc_read_process_conf(LOC_PATH_IZAT_CONF, &processListLength,
+                                   &processInfoList);
+    if (rc != 0) {
+        LOC_LOGe("failed to parse conf file for value added process");
+        if (processInfoList != nullptr) {
+           free (processInfoList);
+        }
+        return;
+    }
+
+    // go over the conf table to see whether any plugin daemon is enabled
+    for (unsigned int i = 0; i < processListLength; i++) {
+        LOC_LOGi("process %s, enabled %d",
+                 processInfoList[i].name[0], processInfoList[i].proc_status);
+        if (processInfoList[i].proc_status == ENABLED) {
+            mIzat_process_conf.valueAddedProcessEnabled = true;
+
+            if (strcmp(processInfoList[i].name[0], "engine-service") == 0) {
+                mIzat_process_conf.engineServiceEnabled = true;
+
+                if (processInfoList[i].args[1]!= nullptr) {
+                    // check if this is DRE-INT engine
+                    if (strncmp(processInfoList[i].args[1], "DRE-INT",
+                                sizeof("DRE-INT")) == 0) {
+                        mIzat_process_conf.engineServiceInfo.dreIntEnabled = true;
+                    } else if (strncmp(processInfoList[i].args[1], "PPE",
+                                       sizeof("PPE")) == 0) {
+                        mIzat_process_conf.engineServiceInfo.ppeEnabled = true;
+                    } else if (strncmp(processInfoList[i].args[1], "PPE-INT",
+                                       sizeof("PPE-INT")) == 0) {
+                        mIzat_process_conf.engineServiceInfo.ppeIntEnabled = true;
+                        mIzat_process_conf.engineServiceInfo.ppeEnabled = true;
+                    }
+                }
+            } else if (strcmp(processInfoList[i].name[0], "xtwifi-client") == 0) {
+                mIzat_process_conf.gtpDaemonEnabled = true;
+            } else if (strcmp(processInfoList[i].name[0], "slim_daemon") == 0) {
+                mIzat_process_conf.slimDaemonEnabled = true;
+            } else if (strcmp(processInfoList[i].name[0], "edgnss-daemon") == 0) {
+                mIzat_process_conf.eDgnssDaemonEnabled = true;
+            }
+        }
+    }
+
+#ifdef _ANDROID_
+    // set the property to launch loc_launcher
+    // loc_launcher rc file will only launch loc_launcher if
+    // property "vendor.qti.izat.value_added_process" is set to "enabled".
+    const char* value = "disabled";
+    if (mIzat_process_conf.valueAddedProcessEnabled == true) {
+        value = "enabled";
+    }
+
+    if (0 != property_set("vendor.qti.izat.value_added_process", value)) {
+        LOC_LOGe ("failed to set property vendor.qti.izat.value_added_process");
+    }
+#endif
+
+    if (processInfoList != nullptr) {
+        free (processInfoList);
+        processInfoList = nullptr;
+    }
+
+    LOC_LOGd ("value added process enabled %d, gtp enabled %d, slim daemon enabled %d, "
+              "edgnss enabled %d, engine service enabled %d (ppe: %d, ppe-int:%d, dre: %d)",
+              mIzat_process_conf.valueAddedProcessEnabled, mIzat_process_conf.gtpDaemonEnabled,
+              mIzat_process_conf.slimDaemonEnabled, mIzat_process_conf.eDgnssDaemonEnabled,
+              mIzat_process_conf.engineServiceEnabled,
+              mIzat_process_conf.engineServiceInfo.ppeEnabled,
+              mIzat_process_conf.engineServiceInfo.ppeIntEnabled,
+              mIzat_process_conf.engineServiceInfo.dreIntEnabled);
 }
 
 uint32_t ContextBase::getCarrierCapabilities() {

@@ -30,7 +30,7 @@
 /*
 Changes from Qualcomm Innovation Center are provided under the following license:
 
-Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted (subject to the limitations in the
@@ -62,6 +62,12 @@ IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+
+/*
+ * Changes from Qualcomm Technologies, Inc. are provided under the following license:
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
 
 #ifndef __SYSTEM_STATUS__
 #define __SYSTEM_STATUS__
@@ -967,6 +973,7 @@ public:
     bool getReport(SystemStatusReports& reports, bool isLatestonly = false,
             bool inSessionOnly = true) const;
     bool setDefaultGnssEngineStates(void);
+    bool updateMccMnc(string& mccmncCountry);
     bool eventConnectionStatus(bool connected, int8_t type,
                                bool roaming, NetworkHandle networkHandle, string& apn);
     bool updatePowerConnectState(bool charging);

@@ -25,6 +25,10 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
+ *
+ * Changes from Qualcomm Technologies, Inc. are provided under the following license:
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
 
 #ifndef __IDATAITEMSUBSCRIPTION_H__
@@ -32,6 +36,10 @@
 
 #include  <unordered_set>
 #include  <DataItemId.h>
+
+#if defined(OPENWRT_BUILD)
+#include <cstddef>
+#endif
 
 namespace loc_core
 {

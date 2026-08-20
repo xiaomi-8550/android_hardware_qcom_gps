@@ -28,39 +28,9 @@
  */
 
 /*
-Changes from Qualcomm Innovation Center are provided under the following license:
-
-Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted (subject to the limitations in the
-disclaimer below) provided that the following conditions are met:
-
-    * Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
-
-    * Redistributions in binary form must reproduce the above
-      copyright notice, this list of conditions and the following
-      disclaimer in the documentation and/or other materials provided
-      with the distribution.
-
-    * Neither the name of Qualcomm Innovation Center, Inc. nor the names of its
-      contributors may be used to endorse or promote products derived
-      from this software without specific prior written permission.
-
-NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
-WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
-ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
-GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
-IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+Changes from Qualcomm Technologies, Inc. are provided under the following license:
+Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
 #define LOG_NDEBUG 0
@@ -186,6 +156,7 @@ typedef struct loc_sv_cache_info_s
     uint32_t bds_b2_count;
     uint32_t bds_b2b_count;
     uint32_t navic_l5_count;
+    uint32_t navic_l1_count;
     float hdop;
     float pdop;
     float vdop;
@@ -389,6 +360,9 @@ static uint32_t convert_signalType_to_signalId(GnssSignalTypeMask signalType)
         case GNSS_SIGNAL_NAVIC_L5:
             signalId = SIGNAL_ID_NAVIC_L5SPS;
             break;
+        case GNSS_SIGNAL_NAVIC_L1:
+            signalId = SIGNAL_ID_NAVIC_L1SPS;
+            break;
         default:
             signalId = SIGNAL_ID_ALL_SIGNALS;
     }
@@ -562,6 +536,9 @@ static loc_nmea_sv_meta* loc_nmea_sv_meta_init(loc_nmea_sv_meta& sv_meta,
                 case GNSS_SIGNAL_NAVIC_L5:
                     sv_meta.svCount = sv_cache_info.navic_l5_count;
                     break;
+                case GNSS_SIGNAL_NAVIC_L1:
+                    sv_meta.svCount = sv_cache_info.navic_l1_count;
+                    break;
             }
             break;
         default:
@@ -729,12 +706,15 @@ static uint32_t loc_nmea_generate_GSA(const UlpLocation &location,
             pMarker += lengthTagBlock;
             lengthRemaining -= lengthTagBlock;
         }
-        if (location.gpsLocation.flags & LOC_GPS_LOCATION_HAS_ALTITUDE) {
-            fixType = '3'; // 3D fix
-        } else if (location.gpsLocation.flags & LOC_GPS_LOCATION_HAS_LAT_LONG) {
-            fixType = '2'; // 2D fix
+        if (location.gpsLocation.flags & LOC_GPS_LOCATION_HAS_LAT_LONG) {
+            if ((location.gpsLocation.flags & LOC_GPS_LOCATION_HAS_ALTITUDE) &&
+                    (!locationExtended.altitudeAssumed)) {
+                fixType = '3'; // 3D fix
+            } else {
+                fixType = '2'; // 2D fix
+            }
         } else {
-            fixType = '1'; // no fix
+            fixType = '1'; //no fix
         }
 
         // Start printing the sentence
@@ -2336,7 +2316,13 @@ void loc_nmea_generate_sv(const GnssSvNotification &svNotify,
         else if (GNSS_SV_TYPE_NAVIC == svNotify.gnssSvs[svOffset].type)
         {
             // GNSS_SIGNAL_NAVIC_L5 is the only signal type for NAVIC
-            sv_cache_info.navic_l5_count++;
+            if (GNSS_SIGNAL_NAVIC_L5 == svNotify.gnssSvs[svOffset].gnssSignalTypeMask) {
+                sv_cache_info.navic_l5_count++;
+            } else if (GNSS_SIGNAL_NAVIC_L1 == svNotify.gnssSvs[svOffset].gnssSignalTypeMask) {
+                sv_cache_info.navic_l1_count++;
+            } else {
+                //No valid signal type
+            }
         }
     }
 
@@ -2452,14 +2438,20 @@ void loc_nmea_generate_sv(const GnssSvNotification &svNotify,
                 GNSS_SIGNAL_BEIDOU_B2BI, false), nmeaArraystr);
     }
 
-
-    // -----------------------------
-    // ------$GIGSV (NAVIC:L5)------
-    // -----------------------------
     if (mEnabledNmeaTypes & NMEA_TYPE_GIGSV) {
+
+        // -----------------------------
+        // ------$GIGSV (NAVIC:L5)------
+        // -----------------------------
         loc_nmea_generate_GSV(svNotify, sentence, sizeof(sentence),
                 loc_nmea_sv_meta_init(sv_meta, sv_cache_info, GNSS_SV_TYPE_NAVIC,
                 GNSS_SIGNAL_NAVIC_L5, false), nmeaArraystr);
+        // -----------------------------
+        // ------$GIGSV (NAVIC:L1)------
+        // -----------------------------
+        loc_nmea_generate_GSV(svNotify, sentence, sizeof(sentence),
+                loc_nmea_sv_meta_init(sv_meta, sv_cache_info, GNSS_SV_TYPE_NAVIC,
+                GNSS_SIGNAL_NAVIC_L1, false), nmeaArraystr);
     }
 
     EXIT_LOG(%d, 0);
